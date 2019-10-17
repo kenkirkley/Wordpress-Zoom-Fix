@@ -1,69 +1,103 @@
-// RECONCILIATION OF WP-ZOOM AND WOOLENTOR PRODUCT VIDEOS
+(async () => {
+  var thumbnails;
+  var flexViewport;
 
-/*
-    STEPS:
-    1. Match main zoom container to the size of the image shown
-    2. Change zoom content to image selected
-    3. Remove zoom from thumbnails
-
-    PROGRAM FLOW:
-    1. UPON PAGE LOAD: Remove zoom from thumbnails
-    2. When a thumbnail is clicked:
-        a. Match main zoom container to the size of the image shown
-        b. Change zoom content to image selected
-*/
-
-// FIX ZOOM FUNCTIONALITY
-// zoomFix:
-
-// zoomFix uses closures to be able to use a callback function with a parameter, in this case, the index of the image that needs to appear in the zoomWindow.
-function zoomFix(adjustedIndex, thumbnail) {
-  return function() {
-    if (thumbnail.classList[0] === "wlvideothumb") {
-      document.querySelector(".zoomContainer").style.display = "none";
-      console.log("zoom container removed");
-    } else {
-      document.querySelector(".zoomContainer").style.display = "block";
+  async function init() {
+    // Waits for the thumbnails to load in
+    while (document.querySelector(".flex-control-thumbs") === null) {
+      await new Promise(r => setTimeout(r, 500));
     }
-    var imageSrc;
-    // Select elements to be manipulated(image, main zoomContainer and zoomContainer with the image zoom content)
-    imageSrc = document.getElementById(`wlvideo-${adjustedIndex}`).childNodes[1]
-      .src;
-    if (imageSrc !== undefined) {
+    thumbnails = document.querySelector(".flex-control-thumbs");
+    var thumbnailWidth = thumbnails.firstChild.firstChild.offsetWidth;
+    var thumbnailHeight;
+    // Waits for thumbnails to render fully so correct height can be referenced
+    while (thumbnails.firstChild.firstChild.offsetHeight <= 10) {
+      await new Promise(r => setTimeout(r, 500));
+    }
+    thumbnailHeight = thumbnails.firstChild.firstChild.offsetHeight;
+    thumbnails.lastChild.insertAdjacentHTML(
+      "afterend",
+      `<li class="video-thumbnail"><iframe class="mini-player" width='${thumbnailWidth}' height='${thumbnailHeight}' src='https://www.youtube.com/embed/pCuZdRN2XpM' style='border-style: solid;
+      border-width: 5px 5px 5px 5px;
+      border-color: #723ba5;
+      border-radius: 25px 25px 25px 25px;' frameborder='0' allow='accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture' allowfullscreen></iframe></li>`
+    );
+
+    thumbnails.lastChild.lastChild.insertAdjacentHTML(
+      "beforebegin",
+      `<div class="video-click" style="position: absolute; opacity: 0; z-index: 10; width: ${thumbnailWidth}px; height: ${thumbnailHeight}px"></div>`
+    );
+  }
+
+  function resizeThumbnail() {
+    var videoThumbnail = document.querySelector(".mini-player");
+    var videoClick = document.querySelector(".video-click");
+
+    videoThumbnail.height = thumbnails.firstChild.firstChild.offsetHeight;
+    videoThumbnail.width = thumbnails.firstChild.firstChild.offsetWidth;
+    videoClick.height = thumbnails.firstChild.firstChild.offsetHeight;
+    videoClick.width = thumbnails.firstChild.firstChild.offsetWidth;
+  }
+
+  // Activated when the thumbnail is clicked.
+  // Adds video to gallery in front of current slide, making the video the slide shown.
+  function toggleVideo(event) {
+    videoGallery = document.querySelector(".video-gallery");
+    if (!videoGallery) {
       document.querySelector(
-        ".zoomWindow"
-      ).style.backgroundImage = `url("${imageSrc}")`;
+        ".flex-control-thumbs"
+      ).lastChild.style.opacity = 1;
+      document.querySelector(".flex-active").style.opacity = 0.5;
+      videoIndex = thumbnails.childNodes.length - 1;
+      productImages = document.querySelectorAll(
+        ".woocommerce-product-gallery__image"
+      );
+      // needs to be in front of current slide
+      document
+        .querySelector(".flex-active-slide")
+        .insertAdjacentHTML(
+          "beforebegin",
+          '<div class="video-gallery" style="width: 530px; margin-right: 0px; float: left; display: block; position: relative; overflow: hidden;"> <iframe width="530" height="315" src="https://www.youtube.com/embed/pCuZdRN2XpM" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe> </div>'
+        );
+
+      if (flexViewport === undefined) {
+        flexViewport = document.querySelector(".flex-viewport");
+      }
+      flexViewport.classList.add("flex-transition");
+      flexViewport.classList.add("video-viewport");
+      // productImages.forEach(e => {
+      //   e.classList.remove("flex-active-slide");
+      // });
+
+      // need to change back to first slide, then create video in front of first slide
     }
-    // 2. Resize zoomContainer to image
-    // 3. Resize zoomWindow to image
-  };
-}
+  }
 
-// REMOVES ZOOM FROM THUMBNAILS
-async function zoomRemove() {
-  while (document.querySelector(".zoomContainer") == null) {
-    await new Promise(r => setTimeout(r, 500));
-  }
-  zoomContainers = document.querySelectorAll(".zoomContainer");
-  // This loop skips over the first zoomContainer, which is the main container that shows the product image.
-  for (var i = 1; i < zoomContainers.length; i++) {
-    zoomContainers[i].style.display = "none";
-  }
-}
+  // Removes video from gallery, changing back to normal images
+  async function removeVideo() {
+    videoGallery = document.querySelector(".video-gallery");
+    if (videoGallery) {
+      // await new Promise(r => setTimeout(r, 500));
 
-(function() {
-  if (document.querySelector(".video-cus-tab-pane") != null) {
-    zoomRemove();
-    var imageIndex = 1;
-    document
-      .querySelector(".woolentor-product-video-tabs")
-      .childNodes.forEach((thumbnail, thumbnailIndex) => {
-        if (thumbnailIndex % 2 == 1) {
-          thumbnail.addEventListener("click", zoomFix(imageIndex, thumbnail));
-          console.log(thumbnail);
-          imageIndex++;
-        }
-      });
-    // Event: zoomFix.
+      thumbnails.lastChild.style.opacity = 0.5;
+      document.querySelector(".flex-active").style.opacity = "";
+      flexViewport.classList.toggle("video-viewport");
+      videoGallery.parentNode.removeChild(videoGallery);
+      flexViewport.classList.remove("flex-transition");
+    }
   }
+  await init();
+  productThumbnails = thumbnails.childNodes;
+  productThumbnails.forEach((el, index) => {
+    if (!(index === productThumbnails.length - 1)) {
+      ["click", "touchstart"].forEach(evt =>
+        el.addEventListener(evt, removeVideo)
+      );
+    }
+  });
+  document
+    .querySelector(".video-thumbnail")
+    .addEventListener("click", toggleVideo);
+
+  window.addEventListener("resize", resizeThumbnail);
 })();
